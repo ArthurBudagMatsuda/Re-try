@@ -15,6 +15,13 @@
       "when": 1791049228839,
       "tag": "0001_tan_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791054058364,
+      "tag": "0002_admin_login_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -1,27 +1,49 @@
 # RE:TRY
 
-A sequence of token attempts with manual administration and a digital Cemetery. Every attempt has an immutable mint address. The project remains RE:TRY throughout the sequence.
+A sequence of token attempts with manual administration, a digital Cemetery and the RE:TRY manifesto. Every attempt has an immutable mint address. The project continues until we find the RUNNER.
+
+## Run locally
+
+Use Node.js 22.13+ and npm. On a new clone, copy `.env.example` to `.env`. A local `.env` has already been prepared in this workspace.
+
+```sh
+npm ci
+npm run admin:setup
+npm run db:migrate
+npm run dev
+```
+
+The development server runs at http://localhost:5173. The local database is `retry.db`, outside Git. `admin:setup` asks for an email and a password without echoing the password; it writes a scrypt password hash and a random session secret into `.env`.
+
+## Deploy to Vercel
+
+See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standard Next.js commands and a libSQL database (local SQLite for development; a remote libSQL database for Vercel). Configure the five server variables from `.env.example`, migrate the destination database and import this GitHub repository using the Next.js preset.
 
 ## Product
-- `/`: current attempt, simulated token statistics, activity indicator and up to three previous attempts.
-- `/cemetery`: responsive digital gravestones, a live total of dead attempts and complete final snapshots in a detail dialog. Results load in batches so every archived attempt is reachable.
-- Owner-only controls mark the current attempt DEAD and register the next attempt manually. A closed attempt leaves the current panel immediately. No replacement is registered until the administrator explicitly acts.
-- Valid mint metadata links to Solscan. Simulated mint metadata clearly disables that link.
 
-## Architecture
-`lib/retry/attempts.ts` owns TokenManager, persisted attempt state, final snapshots, `markAttemptAsDead(attemptId, reason)` and `createNextAttempt(metadata)`.
-`lib/retry/adapter.ts` contains the read-only BlockchainAdapter interface and MockSolanaAdapter. The adapter does not issue tokens. A future creation service must be a separately authorized integration; registration currently saves metadata only.
-`lib/retry/config.ts` centralizes mock monitoring and chart configuration. Activity is illustrative data and has no administrative side effects.
-`db/schema.ts` declares only Attempt data. Existing mints and historical timestamps are retained during upgrades. Applied schema history is immutable; subsequent migrations remove obsolete tables and add final-statistic fields. The historic `ended_at` and `volume` SQL columns map to diedAt and totalVolume in the schema to preserve existing records.
+- `/`: current attempt, simulated statistics, activity and previous attempts.
+- `/#lore`: the English manifesto, RUNNER narrative and Cemetery link.
+- `/cemetery`: digital gravestones and preserved final snapshots, with pagination.
+- `/admin`: administrator login. Authorized controls on `/` close the active attempt or register the next one manually. Signing out clears the session cookie.
+- The warning beside MINT ADDRESS opens on hover, focus or tap. Mint copying and Solscan links remain available for valid mint metadata.
 
-## Administration
-The backend verifies the platform-provided authenticated user identity and email against the server-side RETRY_ADMIN_EMAIL environment value. Configure that value with Sites runtime settings. It is never exposed in the browser. Unauthorized or missing identities are rejected, even if callers bypass the UI. Mutations require a matching Origin, bounded payloads and validated metadata. Final closure is conditional on ACTIVE status, so concurrent closure calls cannot rewrite an archived snapshot. Metadata registration enforces mint uniqueness and refuses to register while an active attempt exists. The UI requires a reason and explicit confirmation before closure.
+## Architecture and administration
 
-The site keeps its existing owner-private audience. If the audience is widened later, administrative writes still require the configured owner identity. Authentication comes from the platform; wallet administration may be added in a future integration.
+`lib/retry/attempts.ts` owns TokenManager, persisted attempt state and final snapshots. `lib/retry/db.ts` executes parameterized queries through `@libsql/client`. `db/schema.ts` and `drizzle/` retain the original SQLite schema history and add a shared login limit table.
 
-## Development
-Use Node 22.13+ with the existing npm lockfile. Run npm ci and npm run dev. Generate SQL using npm run db:generate when schema changes, inspect it, and apply only pending migrations locally via Wrangler with dist/server/wrangler.json and .wrangler/state. Local `.dev.vars` configures the test administrator and is ignored. Production secrets belong in Sites settings.
+Administrative requests require a signed, expiring HttpOnly cookie, a valid server configuration and a matching Origin. Passwords use salted scrypt hashes; sessions use HMAC signatures and expire after eight hours. Changing the password hash, administrator email or session secret invalidates existing sessions. Login attempts are limited in the database across server instances. Untrusted `oai-authenticated-user-*` headers do not grant access.
 
-No real tokens, blockchain transactions, private keys, token issuance or automatic attempt replacement are implemented. Monitoring runs while the page is open; closing an attempt is always a manual administrator action.
+Closure captures the final statistics conditionally on ACTIVE status. Concurrent closures cannot overwrite an archived snapshot. Metadata registration enforces mint uniqueness and refuses to register while an attempt is active. The UI requires a reason and confirmation before closure. There is no automatic replacement, token issuance or blockchain transaction integration. Monitoring uses illustrative mock data.
 
-Browser WebMCP tools expose read-only current-state and cemetery operations when supported. Runtime WebMCP validation requires a supporting browser.
+## Database and verification
+
+```sh
+npm run db:generate   # after a schema change, inspect the resulting migration
+npm run db:migrate   # apply pending migrations to the configured database
+npm run build
+npm run test:vercel
+```
+
+The Vercel verification script starts the production server with a disposable local database and temporary credentials. It checks migrations, authentication, origin validation, login limits, snapshots, concurrency and manual-only attempt lifecycle. Build the project before running it.
+
+The original deployed Sites version and its D1 data remain separate. This GitHub source now targets Vercel; existing Cloudflare build scaffolding is retained as legacy code and is not used by `npm run build`. Data from the original Site is not copied into the new database automatically. Keep `.env`, database files and credentials outside Git.
