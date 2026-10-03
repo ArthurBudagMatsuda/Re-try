@@ -17,7 +17,7 @@ The development server runs at http://localhost:5173. The local database is `ret
 
 ## Deploy to Vercel
 
-See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standard Next.js commands and a libSQL database (local SQLite for development; a remote libSQL database for Vercel). The public monitor works without database variables, using the mint in `lib/retry/config.ts` and an empty Cemetery. For persistent history and administration, configure the five server variables from `.env.example` and migrate the destination database. Import this GitHub repository using the Next.js preset.
+See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standard Next.js commands and a libSQL database (local SQLite for development; a remote libSQL database for Vercel). An empty database displays "AWAITING OFFICIAL MINT" with no token or market statistics. No attempt is seeded automatically. Configure the five server variables from `.env.example`, migrate the destination database, then register the official mint through the administrator controls. The first registration starts attempt #001. Import this GitHub repository using the Next.js preset.
 
 ## Product
 

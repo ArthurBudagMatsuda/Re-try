@@ -1,7 +1,7 @@
 import {TokenManager} from '@/lib/retry/attempts';
 import {requireAdmin,errorResponse} from '@/lib/retry/admin';
 export const runtime='nodejs';
-export async function POST(request:Request){try{requireAdmin(request);const raw=await request.text();if(raw.length>2048)throw new Error('Request is too large');const body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('Invalid action');const manager=new TokenManager();await manager.initialize();
+export async function POST(request:Request){try{requireAdmin(request);const raw=await request.text();if(raw.length>2048)throw new Error('Request is too large');const body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('Invalid action');const manager=new TokenManager();
  if(body.action==='mark-dead'){if(!Number.isInteger(body.attemptId))throw new Error('Invalid attempt');const reason=typeof body.reason==='string'?body.reason.trim():'';if(!reason||reason.length>500)throw new Error('Provide a reason of 1–500 characters');await manager.markAttemptAsDead(body.attemptId,reason)}
  else if(body.action==='register-next'){for(const k of ['tokenAddress','tokenName','tokenSymbol']){if(body[k]!==undefined&&(typeof body[k]!=='string'||body[k].length>(k==='tokenAddress'?80:k==='tokenSymbol'?16:60)))throw new Error('Invalid token metadata')}await manager.createNextAttempt(body)}
  else throw new Error('Unknown action');return Response.json({ok:true},{headers:{'Cache-Control':'no-store'}})}catch(e){return errorResponse(e)}}

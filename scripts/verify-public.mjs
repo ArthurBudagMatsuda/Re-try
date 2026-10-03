@@ -12,8 +12,8 @@ server.stdout.on('data',d=>logs.push(d.toString()));server.stderr.on('data',d=>l
 try{
  let ready=false;for(let i=0;i<60;i++){try{if((await fetch(origin)).ok){ready=true;break}}catch{}if(server.exitCode!==null)break;await new Promise(r=>setTimeout(r,500))}assert.ok(ready,logs.join('').slice(-3000));
  for(const page of ['/','/cemetery','/admin'])assert.equal((await fetch(origin+page)).status,200);
- const r=await fetch(origin+'/api/state');assert.equal(r.status,200);const s=await r.json();assert.equal(s.storage,'unconfigured');assert.equal(s.mode,'live');assert.equal(s.isAdmin,false);assert.equal(s.attempt.token_address,'H7TuvDxEKygh27zGfGcjKG8JGWgrbyKpPtvJEpGosfas');assert.equal(s.attempt.attempt_number,1);assert.equal(s.metrics.marketCap,123456);assert.equal(s.metrics.holders,null);assert.equal(s.deadCount,0);assert.deepEqual(s.previous,[]);
- const cemetery=await (await fetch(origin+'/api/cemetery')).json();assert.equal(cemetery.total,0);assert.deepEqual(cemetery.items,[]);
+ const r=await fetch(origin+'/api/state');assert.equal(r.status,200);const s=await r.json();assert.equal(s.storage,'unconfigured');assert.equal(s.mode,'live');assert.equal(s.isAdmin,false);assert.equal(s.attempt,null);assert.equal(s.metrics,null);assert.equal(s.deadCount,0);assert.deepEqual(s.previous,[]);
+ const cemetery=await (await fetch(origin+'/api/cemetery')).json();assert.equal(cemetery.total,0);assert.deepEqual(cemetery.items,[]);assert.equal(cemetery.current,null);
  const mutation=await fetch(origin+'/api/admin',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({action:'mark-dead',attemptId:1,reason:'Unauthenticated'})});assert.equal(mutation.status,403);
- console.log('PASS: Vercel without database variables serves the configured mint, real-data adapter and empty Cemetery; administration remains protected.');
+ console.log('PASS: Vercel without database variables serves no mint or fabricated attempt, an empty Cemetery, and protected administration.');
 }finally{server.kill();await Promise.race([once(server,'exit'),new Promise(r=>setTimeout(r,3000))])}

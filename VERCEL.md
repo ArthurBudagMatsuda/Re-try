@@ -27,7 +27,9 @@ DATABASE_AUTH_TOKEN=SEU_TOKEN_DO_BANCO
 
 Execute `npm run db:migrate` com essa configuração para aplicar as migrations no banco de destino. As migrations são versionadas e podem ser executadas novamente. Não execute `db:generate` para inicializar produção.
 
-Em desenvolvimento, `DATABASE_URL=file:./retry.db` permite usar SQLite sem serviço remoto. Na Vercel, arquivos locais não são usados como banco: o código recusa URLs `file:` e `:memory:` nesse ambiente. Cada banco vazio começa com a tentativa #001 e a CA configurada em `lib/retry/config.ts`. A migration 0003 remove apenas os antigos registros com mints explicitamente simulados.
+Em desenvolvimento, `DATABASE_URL=file:./retry.db` permite usar SQLite sem serviço remoto. Na Vercel, arquivos locais não são usados como banco: o código recusa URLs `file:` e `:memory:` nesse ambiente. Um banco vazio mostra "AWAITING OFFICIAL MINT", sem CA nem estatísticas. Nenhuma tentativa é criada automaticamente. Cadastre a CA oficial nos controles administrativos para iniciar a tentativa #001. A migration 0003 remove apenas os antigos registros com mints explicitamente simulados.
+
+A migration 0004 remove somente a CA usada no teste de lançamento e impede que deploys antigos a recriem. Esse teste não entra no Cemetery nem consome o número #001.
 
 Os registros do D1 do Site original não são transferidos automaticamente. Para levá-los ao novo banco, exporte a tabela `attempts` e importe seus registros no banco já migrado, preservando IDs, mints, datas e snapshots, antes do primeiro acesso. Não copie credenciais ou tabelas de autenticação antigas.
 
@@ -71,6 +73,6 @@ O teste usa um banco descartável local, não o banco configurado no `.env`. Ap�
 
 Fechar uma tentativa salva seu snapshot; uma nova tentativa começa apenas após registro manual. O monitor consulta a API pública do DEX Screener a cada 30 segundos. Usa o par de maior liquidez em que a CA é o token base. Volume, buys, sells e transações são janelas de 24h desse par; não representam totais desde o lançamento. Holders e histórico de preços não são inventados. Valores indisponíveis aparecem como —; uma falha no provedor não encerra a tentativa.
 
-Sem DATABASE_URL, o site público funciona com a tentativa configurada no código e Cemetery vazio, sem gravações nem painel administrativo. Para persistir histórico e administrar tentativas, configure o banco remoto e as cinco variáveis acima. Não há fallback silencioso se um banco configurado falhar.
+Sem DATABASE_URL, o site público mostra o estado de espera e Cemetery vazio, sem gravações nem painel administrativo. Para persistir histórico e administrar tentativas, configure o banco remoto e as cinco variáveis acima. Não há fallback silencioso se um banco configurado falhar.
 
 Referências oficiais: [Next.js na Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs), [variáveis de ambiente da Vercel](https://vercel.com/docs/environment-variables), [cliente libSQL](https://docs.turso.tech/sdk/ts/reference).

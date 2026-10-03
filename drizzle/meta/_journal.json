@@ -23,6 +23,7 @@
       "tag": "0002_admin_login_limits",
       "breakpoints": true
     },
-    {"idx":3,"version":"6","when":1791056700000,"tag":"0003_remove_demo_attempts","breakpoints":true}
+    {"idx":3,"version":"6","when":1791056700000,"tag":"0003_remove_demo_attempts","breakpoints":true},
+    {"idx":4,"version":"6","when":1791056800000,"tag":"0004_retire_test_mint","breakpoints":true}
   ]
 }

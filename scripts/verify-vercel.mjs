@@ -20,14 +20,18 @@ const origin=`http://127.0.0.1:${port}`,logs=[];
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env,stdio:['ignore','pipe','pipe'],windowsHide:true});
 server.stdout.on('data',value=>logs.push(value.toString()));server.stderr.on('data',value=>logs.push(value.toString()));
 const sql=createClient({url});
+const retiredMint='H7TuvDxEKygh27zGfGcjKG8JGWgrbyKpPtvJEpGosfas';
 async function get(path,cookie='',extra={}){const r=await fetch(`${origin}/api/${path}`,{headers:{Cookie:cookie,...extra}});return {status:r.status,data:await r.json(),headers:r.headers}}
 async function post(path,body,cookie='',requestOrigin=origin,extra={}){const r=await fetch(`${origin}/api/${path}`,{method:'POST',headers:{'Content-Type':'application/json',Origin:requestOrigin,Cookie:cookie,...extra},body:JSON.stringify(body)});return {status:r.status,data:await r.json(),headers:r.headers}}
 try{
  let ready=false;for(let i=0;i<60;i++){try{if((await fetch(origin)).ok){ready=true;break}}catch{}if(server.exitCode!==null)break;await new Promise(resolve=>setTimeout(resolve,500))}assert.ok(ready,logs.join('').slice(-5000));
  for(const page of ['/','/cemetery','/admin'])assert.equal((await fetch(origin+page)).status,200);
- const publicState=await get('state');assert.equal(publicState.status,200);assert.equal(publicState.data.isAdmin,false);assert.equal(publicState.data.attempt.status,'ACTIVE');
+ const publicState=await get('state');assert.equal(publicState.status,200);assert.equal(publicState.data.isAdmin,false);assert.equal(publicState.data.attempt,null);assert.equal(publicState.data.metrics,null);assert.equal(publicState.data.deadCount,0);assert.deepEqual(publicState.data.previous,[]);
+ assert.equal((await get('cemetery')).data.current,null);assert.equal((await get('state')).data.attempt,null);assert.equal((await sql.execute('SELECT COUNT(*) AS count FROM attempts')).rows[0].count,0);
+ const legacySeed=await sql.execute({sql:"INSERT OR IGNORE INTO attempts (id,attempt_number,token_name,token_symbol,token_address,status,created_at) VALUES (1,1,'Test','TEST',?,'ACTIVE',?)",args:[retiredMint,Date.now()]});assert.equal(legacySeed.rowsAffected,0);assert.equal((await get('state')).data.attempt,null);
  const forged={'oai-authenticated-user-id':'forged','oai-authenticated-user-email':email};assert.equal((await get('state','',forged)).data.isAdmin,false);
- assert.equal((await post('admin',{action:'mark-dead',attemptId:publicState.data.attempt.id,reason:'Forged'},'',origin,forged)).status,403);
+ assert.equal((await post('admin',{action:'mark-dead',attemptId:1,reason:'Forged'},'',origin,forged)).status,403);
+ assert.equal((await post('admin',{action:'register-next',tokenAddress:'11111111111111111111111111111111'})).status,403);
  assert.equal((await post('auth/login',{email,password},'','https://foreign.example')).status,403);
  assert.equal((await post('auth/login',{email,password:'incorrect'})).status,401);
  const login=await post('auth/login',{email,password});assert.equal(login.status,200);
@@ -37,7 +41,9 @@ try{
  const payload=JSON.parse(Buffer.from(cookie.split('=')[1].split('.')[0],'base64url').toString());payload.expiresAt=Date.now()-1000;
  const expired=Buffer.from(JSON.stringify(payload)).toString('base64url'),mac=createHmac('sha256',env.AUTH_SECRET).update(expired).digest('base64url');assert.equal((await get('state',`retry_admin=${expired}.${mac}`)).data.isAdmin,false);
  assert.equal((await post('admin',{action:'register-next'},cookie,'https://foreign.example')).status,403);
- const current=publicState.data.attempt;
+ assert.equal((await post('admin',{action:'register-next'},cookie)).status,400);
+ assert.equal((await post('admin',{action:'register-next',tokenAddress:'11111111111111111111111111111111'},cookie)).status,200);
+ const registered=(await get('state',cookie)).data,current=registered.attempt;assert.equal(current.attempt_number,1);assert.equal(current.status,'ACTIVE');assert.equal(registered.metrics.marketCap,123456);assert.equal(registered.deadCount,0);
  assert.equal((await post('admin',{action:'register-next'},cookie)).status,400);
  assert.equal((await post('admin',{action:'mark-dead',attemptId:current.id,reason:''},cookie)).status,400);
  const closes=await Promise.all(['A','B'].map(reason=>post('admin',{action:'mark-dead',attemptId:current.id,reason:`QA closure ${reason}`},cookie)));assert.equal(closes.filter(r=>r.status===200).length,1);
@@ -54,5 +60,5 @@ try{
  for(let i=0;i<10;i++)assert.equal((await post('auth/login',{email,password:'wrong'})).status,401);
  const blocked=await post('auth/login',{email,password});assert.equal(blocked.status,429);assert.ok(Number(blocked.headers.get('retry-after'))>0);
  await sql.execute("UPDATE admin_login_limits SET expires_at=0");assert.equal((await post('auth/login',{email,password})).status,200);
- console.log('PASS: Next.js production routes, idempotent migrations, login, forged/expired sessions, CSRF, shared login limits, immutable snapshots, concurrent closure/registration and manual-only lifecycle.');
+ console.log('PASS: empty launch state, first manual registration as #001, production routes, migrations, authentication, CSRF, login limits, immutable snapshots, concurrent closure/registration and manual-only lifecycle.');
 }finally{sql.close();server.kill();await Promise.race([once(server,'exit'),new Promise(resolve=>setTimeout(resolve,3000))])}
