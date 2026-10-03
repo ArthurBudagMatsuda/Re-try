@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate-db.mjs",
     "admin:setup": "node scripts/setup-admin.mjs",
-    "test:vercel": "node scripts/verify-vercel.mjs"
+    "test:vercel": "node scripts/verify-market.mjs && node scripts/verify-vercel.mjs && node scripts/verify-public.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

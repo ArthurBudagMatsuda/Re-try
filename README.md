@@ -17,11 +17,11 @@ The development server runs at http://localhost:5173. The local database is `ret
 
 ## Deploy to Vercel
 
-See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standard Next.js commands and a libSQL database (local SQLite for development; a remote libSQL database for Vercel). Configure the five server variables from `.env.example`, migrate the destination database and import this GitHub repository using the Next.js preset.
+See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standard Next.js commands and a libSQL database (local SQLite for development; a remote libSQL database for Vercel). The public monitor works without database variables, using the mint in `lib/retry/config.ts` and an empty Cemetery. For persistent history and administration, configure the five server variables from `.env.example` and migrate the destination database. Import this GitHub repository using the Next.js preset.
 
 ## Product
 
-- `/`: current attempt, simulated statistics, activity and previous attempts.
+- `/`: current attempt, live DEX Screener market data and previous attempts.
 - `/#lore`: the English manifesto, RUNNER narrative and Cemetery link.
 - `/cemetery`: digital gravestones and preserved final snapshots, with pagination.
 - `/admin`: administrator login. Authorized controls on `/` close the active attempt or register the next one manually. Signing out clears the session cookie.
@@ -33,7 +33,7 @@ See [VERCEL.md](./VERCEL.md) for the complete setup. The application uses standa
 
 Administrative requests require a signed, expiring HttpOnly cookie, a valid server configuration and a matching Origin. Passwords use salted scrypt hashes; sessions use HMAC signatures and expire after eight hours. Changing the password hash, administrator email or session secret invalidates existing sessions. Login attempts are limited in the database across server instances. Untrusted `oai-authenticated-user-*` headers do not grant access.
 
-Closure captures the final statistics conditionally on ACTIVE status. Concurrent closures cannot overwrite an archived snapshot. Metadata registration enforces mint uniqueness and refuses to register while an attempt is active. The UI requires a reason and confirmation before closure. There is no automatic replacement, token issuance or blockchain transaction integration. Monitoring uses illustrative mock data.
+Closure captures the final statistics conditionally on ACTIVE status. Concurrent closures cannot overwrite an archived snapshot. Metadata registration enforces mint uniqueness and refuses to register while an attempt is active. The UI requires a reason and confirmation before closure. There is no automatic replacement, token issuance or blockchain transaction integration. Monitoring uses public DEX Screener data, selecting the most liquid base-token pair. Trading counts and volume cover 24 hours; absent metrics are displayed as unavailable. No fabricated holders, charts or activity scores.
 
 ## Database and verification
 
