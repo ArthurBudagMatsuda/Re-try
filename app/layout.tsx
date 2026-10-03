@@ -3,10 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "RE:TRY — One more chance",
-  description: "One experiment. Infinite attempts. Follow the current RE:TRY attempt and take part in the community vote.",
-  other: {
-    "codex-preview": "development",
-  },
+  description: "Every attempt can fail. Every failure becomes history. Monitor the current attempt and explore the RE:TRY Cemetery.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -24,4 +21,6 @@ export default function RootLayout({
     </html>
   );
 }
+
+
 

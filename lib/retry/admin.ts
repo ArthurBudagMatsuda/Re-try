@@ -1,0 +1,4 @@
+import {env} from 'cloudflare:workers';
+export function isAdmin(request:Request){const expected=env.RETRY_ADMIN_EMAIL?.trim().toLowerCase();return !!expected&&!!request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase()===expected}
+export function requireAdmin(request:Request){if(!isAdmin(request))throw new Error('Administrator access required');const origin=request.headers.get('origin');if(origin!==new URL(request.url).origin)throw new Error('Origin rejected')}
+export function errorResponse(e:unknown){const message=e instanceof Error?e.message:'Service unavailable';console.error('RE:TRY',message);return Response.json({error:message},{status:message==='Administrator access required'||message==='Origin rejected'?403:message.includes('unavailable')?503:400,headers:{'Cache-Control':'no-store'}})}

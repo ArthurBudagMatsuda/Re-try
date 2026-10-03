@@ -1,27 +1,27 @@
 # RE:TRY
 
-Full-stack mock MVP with a dark terminal interface, persisted attempts, 30-minute voting rounds, signed Solana wallet identities, server-issued demo identities, and an automatic retry lifecycle. No token creation, transaction signing, private keys, trading or Pump.fun integration occurs.
+A sequence of token attempts with manual administration and a digital Cemetery. Every attempt has an immutable mint address. The project remains RE:TRY throughout the sequence.
 
-## Layers
-- app/retry-dashboard.tsx: UI, timer display, voting and history. Reads the JSON API every five seconds; remaining time is anchored to server time.
-- app/api: state, session, vote and explicit simulation endpoints.
-- lib/retry/service.ts: TokenManager coordinates persistent attempts, round closure and new attempts.
-- lib/retry/adapter.ts: BlockchainAdapter contract and MockSolanaAdapter. Mock fixtures are seeded only for the mock adapter.
-- lib/retry/decision.ts: shouldCreateNextAttempt accepts token activity, community vote, voting round, system conditions and extensible indicators.
-- lib/retry/config.ts: ATTEMPT_CONFIG centralizes timing, performance criteria and rate limits. The thresholds are illustrative mock settings, not calibrated trading criteria.
-- db/schema.ts and drizzle/: D1 schema and migration for attempts, rounds, votes, sessions and rate limits.
+## Product
+- `/`: current attempt, simulated token statistics, activity indicator and up to three previous attempts.
+- `/cemetery`: responsive digital gravestones, a live total of dead attempts and complete final snapshots in a detail dialog. Results load in batches so every archived attempt is reachable.
+- Owner-only controls mark the current attempt DEAD and register the next attempt manually. A closed attempt leaves the current panel immediately. No replacement is registered until the administrator explicitly acts.
+- Valid mint metadata links to Solscan. Simulated mint metadata clearly disables that link.
 
-## Voting and security
-The server selects the current attempt and voting round. Clients submit only a choice. A unique database index prevents multiple votes by the same verified wallet per round, including across separate sessions. Wallet ownership is verified using an Ed25519 signature of a nonce-bound, origin-specific message; no transaction is requested. Session cookies are HTTP-only, SameSite Strict and Secure on HTTPS. Mutation routes check Origin, apply request limits and per-session cooldowns, and verify round expiry in the insertion query.
+## Architecture
+`lib/retry/attempts.ts` owns TokenManager, persisted attempt state, final snapshots, `markAttemptAsDead(attemptId, reason)` and `createNextAttempt(metadata)`.
+`lib/retry/adapter.ts` contains the read-only BlockchainAdapter interface and MockSolanaAdapter. The adapter does not issue tokens. A future creation service must be a separately authorized integration; registration currently saves metadata only.
+`lib/retry/config.ts` centralizes mock monitoring and chart configuration. Activity is illustrative data and has no administrative side effects.
+`db/schema.ts` declares only Attempt data. Existing mints and historical timestamps are retained during upgrades. Applied schema history is immutable; subsequent migrations remove obsolete tables and add final-statistic fields. The historic `ended_at` and `volume` SQL columns map to diedAt and totalVolume in the schema to preserve existing records.
 
-Demo identities are explicitly for testing, and do not establish wallet ownership or provide Sybil resistance. On hosted signed-in requests the demo identity uses the platform user ID; on localhost it uses a server-generated session ID. Never treat demo voting as production governance.
+## Administration
+The backend verifies the platform-provided authenticated user identity and email against the server-side RETRY_ADMIN_EMAIL environment value. Configure that value with Sites runtime settings. It is never exposed in the browser. Unauthorized or missing identities are rejected, even if callers bypass the UI. Mutations require a matching Origin, bounded payloads and validated metadata. Final closure is conditional on ACTIVE status, so concurrent closure calls cannot rewrite an archived snapshot. Metadata registration enforces mint uniqueness and refuses to register while an active attempt exists. The UI requires a reason and explicit confirmation before closure.
 
-Round closure and condition evaluation are lazy, driven by state polling. Expired rounds are reconciled when monitoring resumes. A failed attempt stays visible for six seconds before the next attempt begins. When no visitor is polling, no background worker is claimed to be running. Before unattended live operation, add a scheduler or durable coordinator using the same service.
-
-## Integration boundary
-Implement BlockchainAdapter with a trusted Solana data provider. For real token creation, replace the mock createToken implementation only after adding authorization, an idempotent creation operation and transaction coordination; D1 uniqueness currently coordinates the mock insertion, not external blockchain side effects. Initialize the first live attempt separately. Calibrate ATTEMPT_CONFIG from actual market observations. Store any future secrets in server-side environment bindings.
+The site keeps its existing owner-private audience. If the audience is widened later, administrative writes still require the configured owner identity. Authentication comes from the platform; wallet administration may be added in a future integration.
 
 ## Development
-Use Node 22.13+ and npm. Run npm ci, npm run db:generate after schema changes, and npm run build. Apply the migration to the local DB using Wrangler with dist/server/wrangler.json and .wrangler/state, then run npm run dev. See scripts/verify-retry.mjs for the functional verification; it uses only localhost and resets the local simulation database before testing. It verifies origin checks, server validation, duplicate votes, real message signatures, round rollover, preserved results, and automatic retry. Do not run it against production.
+Use Node 22.13+ with the existing npm lockfile. Run npm ci and npm run dev. Generate SQL using npm run db:generate when schema changes, inspect it, and apply only pending migrations locally via Wrangler with dist/server/wrangler.json and .wrangler/state. Local `.dev.vars` configures the test administrator and is ignored. Production secrets belong in Sites settings.
 
-WebMCP tools feature-detect browser support and expose get_retry_state and cast_retry_vote using the same visible UI actions. A browser with WebMCP support is required for runtime validation.
+No real tokens, blockchain transactions, private keys, token issuance or automatic attempt replacement are implemented. Monitoring runs while the page is open; closing an attempt is always a manual administrator action.
+
+Browser WebMCP tools expose read-only current-state and cemetery operations when supported. Runtime WebMCP validation requires a supporting browser.
