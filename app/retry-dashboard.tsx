@@ -6,6 +6,7 @@ import {Toaster,toast} from 'sonner';
 import type {Attempt,Snapshot} from '@/lib/retry/types';
 import {api,Header,Footer,Metric,AttemptDetails,money,num,number,clock,duration} from './retry-shared';
 import AdminControls from './retry-admin';
+import Lore from './retry-lore';
 export default function Dashboard(){
  const [state,setState]=useState<Snapshot|null>(null),[now,setNow]=useState(Date.now()),[offset,setOffset]=useState(0),[error,setError]=useState(''),[details,setDetails]=useState<Attempt|null>(null),[copied,setCopied]=useState(false);
  const stateRef=useRef(state);stateRef.current=state;
@@ -21,5 +22,5 @@ export default function Dashboard(){
  <AdminControls state={state} refresh={refresh}/>
  <section className="previous"><div className="section-header"><h2>Previous attempts</h2><a className="text-link mono" href="/cemetery">ENTER THE CEMETERY</a></div>{state.previous.length?<div className="previous-grid">{state.previous.slice(0,3).map(a=><button className="previous-card" key={a.id} onClick={()=>setDetails(a)} aria-label={`View RE:TRY ${number(a.attempt_number)}`}><img src={a.logo_url} alt=""/><div><strong>#{number(a.attempt_number)}</strong><small>{duration(a.lifespan??0)}</small></div><span className="dead-label">DEAD</span></button>)}</div>:<p className="description">No attempts have been buried yet.</p>}</section>
  </>}
- <AttemptDetails attempt={details} onClose={()=>setDetails(null)}/><Footer/></div>
+ <Lore/><AttemptDetails attempt={details} onClose={()=>setDetails(null)}/><Footer/></div>
 }
