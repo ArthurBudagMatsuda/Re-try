@@ -1,0 +1,5 @@
+import {session,enforceOrigin,rateLimit,errorResponse} from '@/lib/retry/auth';
+import {database} from '@/lib/retry/db';
+import {TokenManager} from '@/lib/retry/service';
+import {ATTEMPT_CONFIG as C} from '@/lib/retry/config';
+export async function POST(request:Request){try{enforceOrigin(request);await rateLimit(request);const s=await session(request);if(!s?.wallet_address)throw new Error('Connect a demo or wallet identity first');const now=Date.now();const gate=await database().prepare('UPDATE sessions SET last_simulation_at=? WHERE id=? AND last_simulation_at<=? RETURNING id').bind(now,s.id,now-C.simulationCooldownMs).first();if(!gate)throw new Error('Simulation is on cooldown. Try again in one minute.');const manager=new TokenManager();await manager.snapshot();const a=(await manager.getCurrentAttempt())!;if(a.status!=='RUNNING')throw new Error('A retry is already in progress');await manager.markAttemptAsFailed(a,'Mock system conditions: activity loss simulated by a participant.',now);return Response.json({ok:true})}catch(e){return errorResponse(e)}}
